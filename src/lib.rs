@@ -2,15 +2,15 @@
 
 const VECTOR_SIZE: usize = 4096;
 
-extern crate test;
 extern crate rand;
+extern crate test;
 
 pub fn add_reg(data: [i32; VECTOR_SIZE], datb: [i32; VECTOR_SIZE]) -> [i32; VECTOR_SIZE] {
     let mut datc = [0; VECTOR_SIZE];
     for i in 0..VECTOR_SIZE {
         datc[i] = data[i] + datb[i]
     }
-    datc;
+    datc
 }
 
 pub fn add_simd(data: [i32; VECTOR_SIZE], datb: [i32; VECTOR_SIZE]) -> [i32; VECTOR_SIZE] {
@@ -27,13 +27,14 @@ pub fn add_simd(data: [i32; VECTOR_SIZE], datb: [i32; VECTOR_SIZE]) -> [i32; VEC
         }
     }
     // Nothing happens when no SIMD
-    datc;
+    datc
 }
 
 // Adds two vectors of 8 i32 through SIMD, loads it in dst
 // It gets the first 8 i32s of data and datb, does not care about further i32s
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
@@ -56,9 +57,20 @@ mod tests {
     fn rand_vec() -> [i32; VECTOR_SIZE] {
         let mut res = [0; VECTOR_SIZE];
         for i in 0..VECTOR_SIZE {
-            res[i] = rand::random::<i32>();
+            res[i] = rand::random::<i32>() / 2;
         }
         res
+    }
+
+    #[test]
+    fn test_add_simd() {
+        let data = rand_vec();
+        let datb = rand_vec();
+        let res1 = add_reg(data, datb);
+        let res2 = add_simd(data, datb);
+        for i in 0..VECTOR_SIZE {
+            assert_eq!(res1[i], res2[i]);
+        }
     }
 
     #[bench]
