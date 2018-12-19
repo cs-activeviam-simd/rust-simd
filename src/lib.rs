@@ -5,29 +5,24 @@ const VECTOR_SIZE: usize = 4096;
 extern crate rand;
 extern crate test;
 
-pub fn add_reg(data: &[i32], datb: &[i32]) -> Vec<i32> {
-    let mut datc = Vec::with_capacity(VECTOR_SIZE);
+pub fn add_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..VECTOR_SIZE {
-        datc.push(data[i] + datb[i])
+        res[i] = data[i] + datb[i]
     }
-    datc
 }
 
-pub fn add_simd(data: &[i32], datb: &[i32]) -> Vec<i32> {
-    let mut datc = vec![0; VECTOR_SIZE];
+pub fn add_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
+        // Nothing happens when no SIMD
         if is_x86_feature_detected!("avx2") {
             return unsafe {
                 for i in 0..VECTOR_SIZE / 8 {
-                    add_simd_8(&data[i * 8..], &datb[i * 8..], &mut datc[i * 8..]);
+                    add_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
                 }
-                datc
             };
         }
     }
-    // Nothing happens when no SIMD
-    datc
 }
 
 // Adds two vectors of 8 i32 through SIMD, loads it in dst
@@ -62,14 +57,24 @@ mod tests {
         res
     }
 
+    fn empty_vec() -> Vec<i32> {
+        let mut res = Vec::with_capacity(VECTOR_SIZE);
+        unsafe {
+            res.set_len(VECTOR_SIZE);
+        }
+        res
+    }
+
     #[test]
     fn test_add_simd() {
         let data = rand_vec();
         let datb = rand_vec();
-        let res1 = add_reg(&data, &datb);
-        let res2 = add_simd(&data, &datb);
+        let mut res_reg = empty_vec();
+        let mut res_simd = empty_vec();
+        add_reg(&data, &datb, &mut res_reg);
+        add_simd(&data, &datb, &mut res_simd);
         for i in 0..VECTOR_SIZE {
-            assert_eq!(res1[i], res2[i]);
+            assert_eq!(res_reg[i], res_simd[i]);
         }
     }
 
@@ -77,13 +82,15 @@ mod tests {
     fn bench_add_reg(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
-        b.iter(|| add_reg(&data, &datb));
+        let mut res_reg = empty_vec();
+        b.iter(|| add_reg(&data, &datb, &mut res_reg));
     }
 
     #[bench]
     fn bench_add_simd(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
-        b.iter(|| add_simd(&data, &datb));
-    }
+        let mut res_simd = empty_vec();
+        b.iter(|| add_simd(&data, &datb, &mut res_simd));
+   }
 }
