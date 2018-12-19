@@ -5,16 +5,16 @@ const VECTOR_SIZE: usize = 4096;
 extern crate rand;
 extern crate test;
 
-pub fn add_reg(data: [i32; VECTOR_SIZE], datb: [i32; VECTOR_SIZE]) -> [i32; VECTOR_SIZE] {
-    let mut datc = [0; VECTOR_SIZE];
+pub fn add_reg(data: &[i32], datb: &[i32]) -> Vec<i32> {
+    let mut datc = Vec::with_capacity(VECTOR_SIZE);
     for i in 0..VECTOR_SIZE {
-        datc[i] = data[i] + datb[i]
+        datc.push(data[i] + datb[i])
     }
     datc
 }
 
-pub fn add_simd(data: [i32; VECTOR_SIZE], datb: [i32; VECTOR_SIZE]) -> [i32; VECTOR_SIZE] {
-    let mut datc = [0; VECTOR_SIZE];
+pub fn add_simd(data: &[i32], datb: &[i32]) -> Vec<i32> {
+    let mut datc = vec![0; VECTOR_SIZE];
     #[cfg(target_arch = "x86_64")]
     {
         if is_x86_feature_detected!("avx2") {
@@ -54,10 +54,10 @@ mod tests {
     use super::*;
     use test::Bencher;
 
-    fn rand_vec() -> [i32; VECTOR_SIZE] {
-        let mut res = [0; VECTOR_SIZE];
-        for i in 0..VECTOR_SIZE {
-            res[i] = rand::random::<i32>() / 2;
+    fn rand_vec() -> Vec<i32> {
+    let mut res = Vec::with_capacity(VECTOR_SIZE);
+        for _ in 0..VECTOR_SIZE {
+            res.push(rand::random::<i32>() / 2);
         }
         res
     }
@@ -66,8 +66,8 @@ mod tests {
     fn test_add_simd() {
         let data = rand_vec();
         let datb = rand_vec();
-        let res1 = add_reg(data, datb);
-        let res2 = add_simd(data, datb);
+        let res1 = add_reg(&data, &datb);
+        let res2 = add_simd(&data, &datb);
         for i in 0..VECTOR_SIZE {
             assert_eq!(res1[i], res2[i]);
         }
@@ -77,13 +77,13 @@ mod tests {
     fn bench_add_reg(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
-        b.iter(|| add_reg(data, datb));
+        b.iter(|| add_reg(&data, &datb));
     }
 
     #[bench]
     fn bench_add_simd(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
-        b.iter(|| add_simd(data, datb));
+        b.iter(|| add_simd(&data, &datb));
     }
 }
