@@ -3,6 +3,7 @@ name = "rust-simd"
 version = "0.1.0"
 authors = ["Rémi Garde <remi.garde@free.fr>"]
 edition = "2018"
+build = "build.rs"
 
 [dependencies]
 rand = "0.6"

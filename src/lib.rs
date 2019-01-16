@@ -43,6 +43,17 @@ unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_add_epi32(veca, vecb))
 }
 
+extern { fn add_simd_c(a: *const i32, b: *const i32, c: *mut i32); }
+
+pub fn add_simd_ffi(data: &[i32], datb: &[i32], res: &mut [i32]) {
+    unsafe {
+        for i in 0..VECTOR_SIZE / 8 {
+            add_simd_c(data[i * 8..].as_ptr(), datb[i * 8..].as_ptr(), res[i * 8..].as_mut_ptr());
+        }
+    }
+}
+
+
 pub fn mul_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..VECTOR_SIZE {
         res[i] = data[i].wrapping_mul(datb[i]); // Does not overflow
@@ -76,7 +87,6 @@ unsafe fn mul_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     // Get the first 8 i32 in a SIMD type
     let veca = _mm256_loadu_si256(data.as_ptr() as *const _);
     let vecb = _mm256_loadu_si256(datb.as_ptr() as *const _);
-
     // Store the addition result in dst
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_mullo_epi32(veca, vecb))
 }
@@ -108,10 +118,13 @@ mod tests {
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
+        let mut res_cimd = empty_vec();
         add_reg(&data, &datb, &mut res_reg);
         add_simd(&data, &datb, &mut res_simd);
+        add_simd_ffi(&data, &datb, &mut res_cimd);
         for i in 0..VECTOR_SIZE {
             assert_eq!(res_reg[i], res_simd[i]);
+            assert_eq!(res_cimd[i], res_simd[i]);
         }
     }
 
@@ -129,6 +142,14 @@ mod tests {
         let datb = rand_vec();
         let mut res_simd = empty_vec();
         b.iter(|| add_simd(&data, &datb, &mut res_simd));
+    }
+
+    #[bench]
+    fn bench_add_cimd(b: &mut Bencher) {
+        let data = rand_vec();
+        let datb = rand_vec();
+        let mut res_simd = empty_vec();
+        b.iter(|| add_simd_ffi(&data, &datb, &mut res_simd));
     }
 
     #[test]
