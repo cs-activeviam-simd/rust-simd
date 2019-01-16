@@ -1,6 +1,6 @@
 #![feature(test)]
 
-const VECTOR_SIZE: usize = 4096;
+const VECTOR_SIZE: usize = 256 << 0;
 
 extern crate rand;
 extern crate test;
@@ -15,13 +15,12 @@ pub fn add_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
         // Nothing happens when no SIMD
-        if is_x86_feature_detected!("avx2") {
-            return unsafe {
-                for i in 0..VECTOR_SIZE / 8 {
-                    add_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
-                }
-            };
-        }
+        #[cfg(target_feature = "avx2")]
+        unsafe {
+            for i in 0..VECTOR_SIZE / 8 {
+                add_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+            }
+        };
     }
 }
 
@@ -54,13 +53,12 @@ pub fn mul_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
         // Nothing happens when no SIMD
-        if is_x86_feature_detected!("avx2") {
-            return unsafe {
-                for i in 0..VECTOR_SIZE / 8 {
-                    mul_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
-                }
-            };
-        }
+        #[cfg(target_feature = "avx2")]
+        unsafe {
+            for i in 0..VECTOR_SIZE / 8 {
+                mul_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+            }
+        };
     }
 }
 
