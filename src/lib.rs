@@ -60,7 +60,7 @@ pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
 
 #[allow(unreachable_code)]
 pub fn add_simd_ffi512(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(target_feature = "avx512")]
+    #[cfg(target_feature = "avx512f")]
     unsafe {
         add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
         return;
