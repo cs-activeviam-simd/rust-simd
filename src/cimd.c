@@ -12,7 +12,7 @@ void add_simd_c512(int * data, int * datb, int * dst, int n) {
         __m512i vecb = _mm512_load_epi32((__m512i *)(datb+i));
 
         // Store the addition result in dst
-        _mm512_storeu_epi32(dst+i, _mm512_add_epi32(veca, vecb));
+        _mm512_store_epi32(dst+i, _mm512_add_epi32(veca, vecb));
     }
 }
 #endif
@@ -26,7 +26,7 @@ void add_simd_c256(int * data, int * datb, int * dst, int n) {
         __m256i vecb = _mm256_loadu_si256((__m256i *) (datb+i));
 
         // Store the addition result in dst
-        _mm256_storeu_si256(dst+i, _mm256_add_epi32(veca, vecb));
+        _mm256_store_si256(dst+i, _mm256_add_epi32(veca, vecb));
     }
 }
 #endif // No SIMD
