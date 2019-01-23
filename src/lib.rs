@@ -43,13 +43,11 @@ unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_add_epi32(veca, vecb))
 }
 
-extern { fn add_simd_c(a: *const i32, b: *const i32, c: *mut i32); }
+extern { fn add_simd_c(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
 
 pub fn add_simd_ffi(data: &[i32], datb: &[i32], res: &mut [i32]) {
     unsafe {
-        for i in 0..VECTOR_SIZE / 8 {
-            add_simd_c(data[i * 8..].as_ptr(), datb[i * 8..].as_ptr(), res[i * 8..].as_mut_ptr());
-        }
+        add_simd_c(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
     }
 }
 
