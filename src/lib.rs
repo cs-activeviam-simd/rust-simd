@@ -1,6 +1,6 @@
 #![feature(test)]
 
-const VECTOR_SIZE: usize = 256 << 0;
+const VECTOR_SIZE: usize = 256 << 5;
 
 extern crate rand;
 extern crate test;
@@ -11,7 +11,7 @@ pub fn add_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
     }
 }
 
-pub fn add_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn add_simd_rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
         // Nothing happens when no SIMD
@@ -43,14 +43,26 @@ unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_add_epi32(veca, vecb))
 }
 
-extern { fn add_simd_c(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
+extern { fn add_simd_c256(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
+extern { fn add_simd_c512(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
 
-pub fn add_simd_ffi(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
+    #[cfg(all( not(target_feature = "avx512"), target_feature = "avx2"))]
     unsafe {
-        add_simd_c(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
+        add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
+        return;
     }
+    add_reg(data, datb, res);
 }
 
+pub fn add_simd_ffi512(data: &[i32], datb: &[i32], res: &mut [i32]) {
+    #[cfg(target_feature = "avx512")]
+    unsafe {
+        add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
+        return;
+    }
+    add_reg(data, datb, res);
+}
 
 pub fn mul_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..VECTOR_SIZE {
@@ -116,13 +128,16 @@ mod tests {
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
-        let mut res_cimd = empty_vec();
+        let mut res_simd256 = empty_vec();
+        let mut res_simd512 = empty_vec();
         add_reg(&data, &datb, &mut res_reg);
-        add_simd(&data, &datb, &mut res_simd);
-        add_simd_ffi(&data, &datb, &mut res_cimd);
+        add_simd_rust(&data, &datb, &mut res_simd);
+        add_simd_ffi256(&data, &datb, &mut res_simd256);
+        add_simd_ffi512(&data, &datb, &mut res_simd512);
         for i in 0..VECTOR_SIZE {
             assert_eq!(res_reg[i], res_simd[i]);
-            assert_eq!(res_cimd[i], res_simd[i]);
+            assert_eq!(res_simd256[i], res_reg[i]);
+            assert_eq!(res_simd512[i], res_reg[i]);
         }
     }
 
@@ -135,19 +150,27 @@ mod tests {
     }
 
     #[bench]
-    fn bench_add_simd(b: &mut Bencher) {
+    fn bench_add_simd_rust(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| add_simd(&data, &datb, &mut res_simd));
+        b.iter(|| add_simd_rust(&data, &datb, &mut res_simd));
     }
 
     #[bench]
-    fn bench_add_cimd(b: &mut Bencher) {
+    fn bench_add_simd256(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| add_simd_ffi(&data, &datb, &mut res_simd));
+        b.iter(|| add_simd_ffi256(&data, &datb, &mut res_simd));
+    }
+
+    #[bench]
+    fn bench_add_simd512(b: &mut Bencher) {
+        let data = rand_vec();
+        let datb = rand_vec();
+        let mut res_simd = empty_vec();
+        b.iter(|| add_simd_ffi512(&data, &datb, &mut res_simd));
     }
 
     #[test]

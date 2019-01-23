@@ -3,8 +3,23 @@
 #include <stdio.h>
 #include <immintrin.h>
 
+#ifdef __AVX512F__
 
-void add_simd_c(int * data, int * datb, int * dst, int n) {
+void add_simd_c512(int * data, int * datb, int * dst, int n) {
+    for (int i = 0 ; i < n ; i  = i+16) {
+        // Get the first 8 i32 in a SIMD type
+        __m512i veca = _mm512_loadu_epi32(data+i);
+        __m512i vecb = _mm512_loadu_epi32(datb+i);
+
+        // Store the addition result in dst
+        _mm512_storeu_epi32(dst+i, _mm512_add_epi32(veca, vecb));
+    }
+}
+#endif
+
+#ifdef __AVX2__
+
+void add_simd_c256(int * data, int * datb, int * dst, int n) {
     for (int i = 0 ; i < n ; i  = i+8) {
         // Get the first 8 i32 in a SIMD type
         __m256i veca = _mm256_loadu_si256(data+i);
@@ -14,9 +29,10 @@ void add_simd_c(int * data, int * datb, int * dst, int n) {
         _mm256_storeu_si256(dst+i, _mm256_add_epi32(veca, vecb));
     }
 }
+#endif // No SIMD
 
-void add_simd_not( int * data, int * datb, int * dst ) {
-   for (int i =0; i<8;i++) {
+void add_simd_not( int * data, int * datb, int * dst, int n ) {
+   for (int i =0; i<n;i++) {
        dst[i] = data[i] + datb[i];
    }
 }
