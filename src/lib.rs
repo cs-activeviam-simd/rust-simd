@@ -43,11 +43,14 @@ unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_add_epi32(veca, vecb))
 }
 
+#[allow(dead_code)]
 extern { fn add_simd_c256(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
+#[allow(dead_code)]
 extern { fn add_simd_c512(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
 
+#[allow(unreachable_code)]
 pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(all( not(target_feature = "avx512"), target_feature = "avx2"))]
+    #[cfg(target_feature = "avx2")]
     unsafe {
         add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), VECTOR_SIZE as i32);
         return;
@@ -55,6 +58,7 @@ pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
     add_reg(data, datb, res);
 }
 
+#[allow(unreachable_code)]
 pub fn add_simd_ffi512(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_feature = "avx512")]
     unsafe {
