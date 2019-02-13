@@ -2,9 +2,9 @@
 #[macro_use]
 extern crate lazy_static;
 lazy_static! {
-    static ref VECTOR_SIZE: usize = std::env::vars()
+    static ref ARRAY_LENGTH: usize = std::env::vars()
         .find_map(|(key, val)|
-            if key == "VECTOR_SIZE" {val.parse::<usize>().ok()}
+            if key == "ARRAY_LENGTH" {val.parse::<usize>().ok()}
             else {None})
         .unwrap_or(256);
 }
@@ -13,7 +13,7 @@ extern crate rand;
 extern crate test;
 
 pub fn add_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    for i in 0..*VECTOR_SIZE {
+    for i in 0..*ARRAY_LENGTH {
         res[i] = data[i] + datb[i]
     }
 }
@@ -24,7 +24,7 @@ pub fn add_simd_rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
         // Nothing happens when no SIMD
         #[cfg(target_feature = "avx2")]
         unsafe {
-            for i in 0..*VECTOR_SIZE / 8 {
+            for i in 0..*ARRAY_LENGTH / 8 {
                 add_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
             }
         };
@@ -59,7 +59,7 @@ extern { fn add_simd_c512(a: *const i32, b: *const i32, c: *mut i32, size: i32);
 pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_feature = "avx2")]
     unsafe {
-        add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *VECTOR_SIZE as i32);
+        add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
         return;
     }
     add_reg(data, datb, res);
@@ -69,14 +69,14 @@ pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
 pub fn add_simd_ffi512(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_feature = "avx512f")]
     unsafe {
-        add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *VECTOR_SIZE as i32);
+        add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
         return;
     }
     add_reg(data, datb, res);
 }
 
 pub fn mul_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    for i in 0..*VECTOR_SIZE {
+    for i in 0..*ARRAY_LENGTH {
         res[i] = data[i].wrapping_mul(datb[i]); // Does not overflow
     }
 }
@@ -87,7 +87,7 @@ pub fn mul_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
         // Nothing happens when no SIMD
         #[cfg(target_feature = "avx2")]
         unsafe {
-            for i in 0..*VECTOR_SIZE / 8 {
+            for i in 0..*ARRAY_LENGTH / 8 {
                 mul_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
             }
         };
@@ -118,17 +118,17 @@ mod tests {
     use test::Bencher;
 
     fn rand_vec() -> Vec<i32> {
-        let mut res = Vec::with_capacity(*VECTOR_SIZE);
-        for _ in 0..*VECTOR_SIZE {
+        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
+        for _ in 0..*ARRAY_LENGTH {
             res.push(rand::random::<i32>() / 2);
         }
         res
     }
 
     fn empty_vec() -> Vec<i32> {
-        let mut res = Vec::with_capacity(*VECTOR_SIZE);
+        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
         unsafe {
-            res.set_len(*VECTOR_SIZE);
+            res.set_len(*ARRAY_LENGTH);
         }
         res
     }
@@ -145,7 +145,7 @@ mod tests {
         add_simd_rust(&data, &datb, &mut res_simd);
         add_simd_ffi256(&data, &datb, &mut res_simd256);
         add_simd_ffi512(&data, &datb, &mut res_simd512);
-        for i in 0..*VECTOR_SIZE {
+        for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
             assert_eq!(res_simd256[i], res_reg[i]);
             assert_eq!(res_simd512[i], res_reg[i]);
@@ -192,7 +192,7 @@ mod tests {
         let mut res_simd = empty_vec();
         mul_reg(&data, &datb, &mut res_reg);
         mul_simd(&data, &datb, &mut res_simd);
-        for i in 0..*VECTOR_SIZE {
+        for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
         }
     }
