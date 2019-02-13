@@ -20,10 +20,10 @@ def parse_bench(s):
         return {}
     words = s.split()
     benchmark = words[1][13:]
-    print(words)
+    # print(words)
     score = int(words[4].replace(',',''))
     scoreUnit = 'ns/op'
-    scoreError = int(words[7][:-1])
+    scoreError = int(words[7][:-1].replace(',',''))
     scoreConfidence = [score - scoreError, score + scoreError]
     return {
         'benchmark': benchmark,
@@ -38,11 +38,11 @@ def parse_bench(s):
 
 results = []
 
-for i in range(7,8):
+for i in range(9,27):
     array_length = 1 << i
-    print('Running for ARRAY_LENGTH={}'.format(array_length))
+    # print('Running for ARRAY_LENGTH={}'.format(array_length))
     p = subprocess.run(['cargo', 'bench'], capture_output=True, env=dict(os.environ, ARRAY_LENGTH=str(array_length)))
-    print(p.stdout.decode())
+    # print(p.stdout.decode())
     out = p.stdout.decode()
     results.extend(parse_output(out, array_length))
 
