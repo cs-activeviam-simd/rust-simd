@@ -1,4 +1,5 @@
 #![feature(test)]
+#![allow(non_snake_case)]
 #[macro_use]
 extern crate lazy_static;
 lazy_static! {
@@ -12,20 +13,20 @@ lazy_static! {
 extern crate rand;
 extern crate test;
 
-pub fn add_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn addRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..*ARRAY_LENGTH {
         res[i] = data[i] + datb[i]
     }
 }
 
-pub fn add_simd_rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn addSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
         // Nothing happens when no SIMD
         #[cfg(target_feature = "avx2")]
         unsafe {
             for i in 0..*ARRAY_LENGTH / 8 {
-                add_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+                addSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
             }
         };
     }
@@ -36,7 +37,7 @@ pub fn add_simd_rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-unsafe fn add_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
+unsafe fn addSIMD256Rust_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
@@ -55,40 +56,36 @@ extern { fn add_simd_c256(a: *const i32, b: *const i32, c: *mut i32, size: i32);
 #[allow(dead_code)]
 extern { fn add_simd_c512(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
 
-#[allow(unreachable_code)]
-pub fn add_simd_ffi256(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn addSIMD256(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_feature = "avx2")]
     unsafe {
         add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
         return;
     }
-    add_reg(data, datb, res);
 }
 
-#[allow(unreachable_code)]
-pub fn add_simd_ffi512(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn addSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_feature = "avx512f")]
     unsafe {
         add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
         return;
     }
-    add_reg(data, datb, res);
 }
 
-pub fn mul_reg(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn mulRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..*ARRAY_LENGTH {
         res[i] = data[i].wrapping_mul(datb[i]); // Does not overflow
     }
 }
 
-pub fn mul_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
+pub fn mulSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
     #[cfg(target_arch = "x86_64")]
     {
         // Nothing happens when no SIMD
         #[cfg(target_feature = "avx2")]
         unsafe {
             for i in 0..*ARRAY_LENGTH / 8 {
-                mul_simd_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+                mulSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
             }
         };
     }
@@ -99,7 +96,7 @@ pub fn mul_simd(data: &[i32], datb: &[i32], res: &mut [i32]) {
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
-unsafe fn mul_simd_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
+unsafe fn mulSIMD256Rust_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
@@ -134,17 +131,17 @@ mod tests {
     }
 
     #[test]
-    fn test_add_simd() {
+    fn test_add() {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
         let mut res_simd256 = empty_vec();
         let mut res_simd512 = empty_vec();
-        add_reg(&data, &datb, &mut res_reg);
-        add_simd_rust(&data, &datb, &mut res_simd);
-        add_simd_ffi256(&data, &datb, &mut res_simd256);
-        add_simd_ffi512(&data, &datb, &mut res_simd512);
+        addRegular(&data, &datb, &mut res_reg);
+        addSIMD256Rust(&data, &datb, &mut res_simd);
+        addSIMD256(&data, &datb, &mut res_simd256);
+        addSIMD512(&data, &datb, &mut res_simd512);
         for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
             assert_eq!(res_simd256[i], res_reg[i]);
@@ -153,19 +150,19 @@ mod tests {
     }
 
     #[bench]
-    fn bench_add_reg(b: &mut Bencher) {
+    fn bench_addRegular(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
-        b.iter(|| add_reg(&data, &datb, &mut res_reg));
+        b.iter(|| addRegular(&data, &datb, &mut res_reg));
     }
 
     #[bench]
-    fn bench_add_simd_rust(b: &mut Bencher) {
+    fn bench_addSIMD256Rust(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| add_simd_rust(&data, &datb, &mut res_simd));
+        b.iter(|| addSIMD256Rust(&data, &datb, &mut res_simd));
     }
 
     #[bench]
@@ -173,7 +170,7 @@ mod tests {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| add_simd_ffi256(&data, &datb, &mut res_simd));
+        b.iter(|| addSIMD256(&data, &datb, &mut res_simd));
     }
 
     #[bench]
@@ -181,35 +178,35 @@ mod tests {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| add_simd_ffi512(&data, &datb, &mut res_simd));
+        b.iter(|| addSIMD512(&data, &datb, &mut res_simd));
     }
 
     #[test]
-    fn test_mul_simd() {
+    fn test_mulSIMD256Rust() {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
-        mul_reg(&data, &datb, &mut res_reg);
-        mul_simd(&data, &datb, &mut res_simd);
+        mulRegular(&data, &datb, &mut res_reg);
+        mulSIMD256Rust(&data, &datb, &mut res_simd);
         for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
         }
     }
 
     #[bench]
-    fn bench_mul_reg(b: &mut Bencher) {
+    fn bench_mul(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
-        b.iter(|| mul_reg(&data, &datb, &mut res_reg));
+        b.iter(|| mulRegular(&data, &datb, &mut res_reg));
     }
 
     #[bench]
-    fn bench_mul_simd(b: &mut Bencher) {
+    fn bench_mulSIMD256Rust(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
-        b.iter(|| mul_simd(&data, &datb, &mut res_simd));
+        b.iter(|| mulSIMD256Rust(&data, &datb, &mut res_simd));
     }
 }
