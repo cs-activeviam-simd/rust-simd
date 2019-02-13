@@ -41,7 +41,7 @@ results = []
 for i in range(9,27):
     array_length = 1 << i
     # print('Running for ARRAY_LENGTH={}'.format(array_length))
-    p = subprocess.run(['cargo', 'bench'], capture_output=True, env=dict(os.environ, ARRAY_LENGTH=str(array_length)))
+    p = subprocess.run(['cargo', 'bench'], stdout=subprocess.PIPE, env=dict(os.environ, ARRAY_LENGTH=str(array_length)))
     # print(p.stdout.decode())
     out = p.stdout.decode()
     results.extend(parse_output(out, array_length))
