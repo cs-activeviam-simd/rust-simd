@@ -46,7 +46,7 @@ for i in range(9,27):
     out = p.stdout.decode()
     results.extend(parse_output(out, array_length))
 
-print(json.dumps(results))
+print(json.dumps(results, indent=4, sort_keys=True))
 
 
 '''
