@@ -11,4 +11,5 @@ Run the tests:
 `cargo test`
 
 Run the benchmark:
-`cargo bench`
+`VECTOR_SIZE=<> cargo bench`
+VECTOR_SIZE defaults to 256. Add `-- --nocapture` to get the test/bench outputs
