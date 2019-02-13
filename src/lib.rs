@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     #[cfg(target_feature = "avx2")]
-    fn test_mulSIMD256Rust() {
+    fn test_mul() {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
@@ -217,7 +217,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_mul(b: &mut Bencher) {
+    fn bench_mulRegular(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
