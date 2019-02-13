@@ -5,7 +5,7 @@
 
 #ifdef __AVX512F__
 
-void add_simd_c512(int * data, int * datb, int * dst, int n) {
+void addSIMD512_C(int * data, int * datb, int * dst, int n) {
     for (int i = 0 ; i < n ; i  = i+16) {
         // Get the first 8 i32 in a SIMD type
         __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
@@ -16,9 +16,10 @@ void add_simd_c512(int * data, int * datb, int * dst, int n) {
 }
 #endif
 
+
 #ifdef __AVX2__
 
-void add_simd_c256(int * data, int * datb, int * dst, int n) {
+void addSIMD256_C(int * data, int * datb, int * dst, int n) {
     for (int i = 0 ; i < n ; i  = i+8) {
         // Get the first 8 i32 in a SIMD type
         __m256i veca = _mm256_loadu_si256((__m256i *) (data+i));
@@ -29,9 +30,3 @@ void add_simd_c256(int * data, int * datb, int * dst, int n) {
     }
 }
 #endif // No SIMD
-
-void add_simd_not( int * data, int * datb, int * dst, int n ) {
-   for (int i =0; i<n;i++) {
-       dst[i] = data[i] + datb[i];
-   }
-}

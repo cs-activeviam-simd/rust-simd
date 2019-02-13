@@ -4,9 +4,11 @@
 extern crate lazy_static;
 lazy_static! {
     static ref ARRAY_LENGTH: usize = std::env::vars()
-        .find_map(|(key, val)|
-            if key == "ARRAY_LENGTH" {val.parse::<usize>().ok()}
-            else {None})
+        .find_map(|(key, val)| if key == "ARRAY_LENGTH" {
+            val.parse::<usize>().ok()
+        } else {
+            None
+        })
         .unwrap_or(256);
 }
 
@@ -19,16 +21,13 @@ pub fn addRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     }
 }
 
+#[cfg(target_feature = "avx2")]
 pub fn addSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(target_arch = "x86_64")]
-    {
-        // Nothing happens when no SIMD
-        #[cfg(target_feature = "avx2")]
-        unsafe {
-            for i in 0..*ARRAY_LENGTH / 8 {
-                addSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
-            }
-        };
+    // Nothing happens when no SIMD
+    unsafe {
+        for i in 0..*ARRAY_LENGTH / 8 {
+            addSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+        }
     }
 }
 
@@ -51,23 +50,39 @@ unsafe fn addSIMD256Rust_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_add_epi32(veca, vecb))
 }
 
-#[allow(dead_code)]
-extern { fn add_simd_c256(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
-#[allow(dead_code)]
-extern { fn add_simd_c512(a: *const i32, b: *const i32, c: *mut i32, size: i32); }
+#[cfg(target_feature = "avx2")]
+extern "C" {
+    fn addSIMD256_C(a: *const i32, b: *const i32, c: *mut i32, size: i32);
+}
 
+#[cfg(target_feature = "avx512f")]
+extern "C" {
+    fn addSIMD512_C(a: *const i32, b: *const i32, c: *mut i32, size: i32);
+}
+
+#[cfg(target_feature = "avx2")]
 pub fn addSIMD256(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(target_feature = "avx2")]
     unsafe {
-        add_simd_c256(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
+        addSIMD256_C(
+            data.as_ptr(),
+            datb.as_ptr(),
+            res.as_mut_ptr(),
+            *ARRAY_LENGTH as i32,
+        );
         return;
     }
 }
 
+
+#[cfg(target_feature = "avx512f")]
 pub fn addSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(target_feature = "avx512f")]
     unsafe {
-        add_simd_c512(data.as_ptr(), datb.as_ptr(), res.as_mut_ptr(), *ARRAY_LENGTH as i32);
+        addSIMD512_C(
+            data.as_ptr(),
+            datb.as_ptr(),
+            res.as_mut_ptr(),
+            *ARRAY_LENGTH as i32,
+        );
         return;
     }
 }
@@ -78,16 +93,13 @@ pub fn mulRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     }
 }
 
+#[cfg(target_feature = "avx2")]
 pub fn mulSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    #[cfg(target_arch = "x86_64")]
-    {
-        // Nothing happens when no SIMD
-        #[cfg(target_feature = "avx2")]
-        unsafe {
-            for i in 0..*ARRAY_LENGTH / 8 {
-                mulSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
-            }
-        };
+    // Nothing happens when no SIMD
+    unsafe {
+        for i in 0..*ARRAY_LENGTH / 8 {
+            mulSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
+        }
     }
 }
 
@@ -131,20 +143,26 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_feature = "avx2")]
     fn test_add() {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
         let mut res_simd256 = empty_vec();
+        #[cfg(target_feature = "avx512f")]
         let mut res_simd512 = empty_vec();
+
         addRegular(&data, &datb, &mut res_reg);
         addSIMD256Rust(&data, &datb, &mut res_simd);
         addSIMD256(&data, &datb, &mut res_simd256);
+        #[cfg(target_feature = "avx512f")]
         addSIMD512(&data, &datb, &mut res_simd512);
+
         for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
             assert_eq!(res_simd256[i], res_reg[i]);
+            #[cfg(target_feature = "avx512f")]
             assert_eq!(res_simd512[i], res_reg[i]);
         }
     }
@@ -158,6 +176,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(target_feature = "avx2")]
     fn bench_addSIMD256Rust(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
@@ -166,7 +185,8 @@ mod tests {
     }
 
     #[bench]
-    fn bench_add_simd256(b: &mut Bencher) {
+    #[cfg(target_feature = "avx2")]
+    fn bench_addSIMD256(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
@@ -174,7 +194,8 @@ mod tests {
     }
 
     #[bench]
-    fn bench_add_simd512(b: &mut Bencher) {
+    #[cfg(target_feature = "avx512f")]
+    fn bench_addSIMD512(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
@@ -182,6 +203,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_feature = "avx2")]
     fn test_mulSIMD256Rust() {
         let data = rand_vec();
         let datb = rand_vec();
@@ -203,6 +225,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(target_feature = "avx2")]
     fn bench_mulSIMD256Rust(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
