@@ -154,7 +154,6 @@ mod tests {
 
     #[bench]
     fn bench_add_reg(b: &mut Bencher) {
-        eprintln!("{}", *VECTOR_SIZE);
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_reg = empty_vec();
