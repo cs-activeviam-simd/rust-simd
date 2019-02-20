@@ -3,6 +3,7 @@
 import subprocess
 import os
 import json
+import sys
 
 def parse_output(s, array_length):
     res = []
@@ -35,31 +36,28 @@ def parse_bench(s):
         }
     }
 
+def run(minsize, maxsize, extraArgs):
+    results = []
+    size = minsize
+    while size <= maxsize:
+        print('Running for ARRAY_LENGTH={}'.format(size))
+        p = subprocess.run(['cargo', 'bench'] + extraArgs, stdout=subprocess.PIPE, env=dict(os.environ, ARRAY_LENGTH=str(size)))
+        # print(p.stdout.decode())
+        out = p.stdout.decode()
+        results.extend(parse_output(out, size))
+        size *= 2
 
-results = []
+    print(json.dumps(results, indent=4, sort_keys=True))
 
-for i in range(9,27):
-    array_length = 1 << i
-    # print('Running for ARRAY_LENGTH={}'.format(array_length))
-    p = subprocess.run(['cargo', 'bench'], stdout=subprocess.PIPE, env=dict(os.environ, ARRAY_LENGTH=str(array_length)))
-    # print(p.stdout.decode())
-    out = p.stdout.decode()
-    results.extend(parse_output(out, array_length))
-
-print(json.dumps(results, indent=4, sort_keys=True))
-
-
-'''
-2048
-
-running 8 tests
-test tests::test_add_simd ... ignored
-test tests::test_mul_simd ... ignored
-test tests::bench_add_reg       ... bench:       1,820 ns/iter (+/- 11)
-test tests::bench_add_simd256   ... bench:         233 ns/iter (+/- 1)
-test tests::bench_add_simd512   ... bench:       1,825 ns/iter (+/- 13)
-test tests::bench_add_simd_rust ... bench:         255 ns/iter (+/- 2)
-test tests::bench_mul_reg       ... bench:       1,853 ns/iter (+/- 8)
-test tests::bench_mul_simd      ... bench:         262 ns/iter (+/- 2)
-
-test result: ok. 0 passed; 0 failed; 2 ignored; 6 measured; 0 filtered out'''
+if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("Usage: run_bench.py <minsize> <maxsize> [extra cargo args]\nIf a size is less than 64, it is interpreted a a power of 2")
+    else:
+        minsize = int(sys.argv[1])
+        if minsize < 64:
+            minsize  = 1 << minsize
+        maxsize = int(sys.argv[2])
+        if maxsize < 64:
+            maxsize  = 1 << maxsize
+        print(sys.argv[3:])
+        run(minsize, maxsize, sys.argv[3:])
