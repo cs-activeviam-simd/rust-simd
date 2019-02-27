@@ -15,6 +15,8 @@ lazy_static! {
 extern crate rand;
 extern crate test;
 
+//  ------- Addition --------
+
 pub fn addRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..*ARRAY_LENGTH {
         res[i] = data[i] + datb[i]
@@ -68,8 +70,7 @@ pub fn addSIMD256(data: &[i32], datb: &[i32], res: &mut [i32]) {
             datb.as_ptr(),
             res.as_mut_ptr(),
             *ARRAY_LENGTH as i32,
-        );
-        return;
+        )
     }
 }
 
@@ -82,10 +83,13 @@ pub fn addSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
             datb.as_ptr(),
             res.as_mut_ptr(),
             *ARRAY_LENGTH as i32,
-        );
-        return;
+        )
     }
 }
+
+
+
+//  ------- Multiplication --------
 
 pub fn mulRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
     for i in 0..*ARRAY_LENGTH {
@@ -140,6 +144,56 @@ pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
     }
 }
 
+
+
+
+//  ------- FilterSum --------
+
+pub fn filterSumRegular(x : i32, data: &[i32], datb: &[i32]) -> i32 {
+    let mut sum = 0;
+        for i in 0..*ARRAY_LENGTH {
+            if data[i] == x {
+                sum += datb[i];
+            }
+        }
+    sum
+}
+
+
+#[cfg(target_feature = "avx2")]
+extern "C" {
+    fn filterSumSIMD256_C(x: i32, data: *const i32, datb: *const i32, size: i32) -> i32;
+}
+
+#[cfg(target_feature = "avx512f")]
+extern "C" {
+    fn filterSumSIMD512_C(x: i32, data: *const i32, datb: *const i32, size: i32) -> i32;
+}
+
+#[cfg(target_feature = "avx2")]
+pub fn filterSumSIMD256(x : i32, data: &[i32], datb: &[i32]) -> i32 {
+    unsafe {
+        filterSumSIMD256_C(
+            x,
+            data.as_ptr(),
+            datb.as_ptr(),
+            *ARRAY_LENGTH as i32,
+        )
+    }
+}
+
+#[cfg(target_feature = "avx512f")]
+pub fn filterSumSIMD512(x : i32, data: &[i32], datb: &[i32]) -> i32 {
+    unsafe {
+        filterSumSIMD512_C(
+            x,
+            data.as_ptr(),
+            datb.as_ptr(),
+            *ARRAY_LENGTH as i32,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,6 +203,14 @@ mod tests {
         let mut res = Vec::with_capacity(*ARRAY_LENGTH);
         for _ in 0..*ARRAY_LENGTH {
             res.push(rand::random::<i32>() / 2);
+        }
+        res
+    }
+
+    fn rand_small_vec() -> Vec<i32> {
+        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
+        for _ in 0..*ARRAY_LENGTH {
+            res.push(rand::random::<i32>() % 32);
         }
         res
     }
@@ -262,10 +324,55 @@ mod tests {
 
     #[bench]
     #[cfg(target_feature = "avx512f")]
-    fn bench_mulSIMD256Rust(b: &mut Bencher) {
+    fn bench_mulSIMD512(b: &mut Bencher) {
         let data = rand_vec();
         let datb = rand_vec();
         let mut res_simd = empty_vec();
         b.iter(|| mulSIMD512(&data, &datb, &mut res_simd));
     }
+
+
+    #[test]
+    #[cfg(target_feature = "avx2")]
+    fn test_filterSum() {
+        let x = rand::random::<i32>() % 32;
+        let data = rand_small_vec();
+        let datb = rand_small_vec();
+
+        let res_reg = filterSumRegular(x, &data, &datb);
+        let res_simd256 = filterSumSIMD256(x, &data, &datb);
+        #[cfg(target_feature = "avx512f")]
+        let res_simd512 = filterSumSIMD512(x, &data, &datb);
+
+        assert_eq!(res_reg, res_simd256);
+        #[cfg(target_feature = "avx512f")]
+        assert_eq!(res_reg, res_simd512);
+    }
+
+    #[bench]
+    fn bench_filterSumRegular(b: &mut Bencher) {
+        let x = rand::random::<i32>() % 32;
+        let data = rand_small_vec();
+        let datb = rand_small_vec();
+        b.iter(|| filterSumRegular(x, &data, &datb));
+    }
+
+    #[bench]
+    #[cfg(target_feature = "avx2")]
+    fn bench_filterSumSIMD256(b: &mut Bencher) {
+        let x = rand::random::<i32>() % 32;
+        let data = rand_small_vec();
+        let datb = rand_small_vec();
+        b.iter(|| filterSumSIMD256(x, &data, &datb));
+    }
+
+    #[bench]
+    #[cfg(target_feature = "avx512f")]
+    fn bench_filterSumSIMD512(b: &mut Bencher) {
+        let x = rand::random::<i32>() % 32;
+        let data = rand_small_vec();
+        let datb = rand_small_vec();
+        b.iter(|| filterSumSIMD512(x, &data, &datb));
+    }
+
 }
