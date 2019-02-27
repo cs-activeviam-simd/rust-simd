@@ -151,11 +151,11 @@ pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
 
 pub fn filterSumRegular(x : i32, data: &[i32], datb: &[i32]) -> i32 {
     let mut sum = 0;
-        for i in 0..*ARRAY_LENGTH {
-            if data[i] == x {
-                sum += datb[i];
-            }
+    for i in 0..*ARRAY_LENGTH {
+        if data[i] == x {
+            sum += datb[i];
         }
+    }
     sum
 }
 

@@ -59,7 +59,7 @@ int filterSumSIMD256_C(int x, int * data, int * datb, int n) {
     __m256i vecSum = _mm256_set1_epi32(0);
     __m256i vecX = _mm256_set1_epi32(x);
     __m256i vec0 = _mm256_set1_epi32(0);
-    for (int i = 0 ; i < n ; i  = i+16) {
+    for (int i = 0 ; i < n ; i  = i+8) {
         __m256i veca = _mm256_loadu_si256((__m256i *)(data+i));
         // Mask the positions of elements equal to x
         __m256i mask = _mm256_cmpeq_epi32(vecX, veca);
