@@ -32,7 +32,7 @@ int filterSumSIMD512_C(int x, int * data, int * datb, int n) {
         __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
         __m512i vecb = _mm512_loadu_si512((__m512i *)(datb+i));
         // Mask the positions of elements equal to x
-        __mmask16 mask = _mm512_cmp_epi32_mask(vecX, veca);
+        __mmask16 mask = _mm512_cmpeq_epi32_mask(vecX, veca);
         // Add elements from datb where masks is set
         vecSum = _mm512_mask_add_epi32(vecSum, mask, vecSum, vecb);
     }
@@ -70,7 +70,7 @@ int filterSumSIMD256_C(int x, int * data, int * datb, int n) {
     }
     // Reduce vecSum into a single int
     int* sum = (int*) calloc(8, sizeof(int));
-    _mm256_storeu_si256(sum, vecSum);
+    _mm256_storeu_si256((__m256i *)sum, vecSum);
     int res = 0;
     for (int i = 0 ; i < 8 ; i++) {
         res += sum[i];
