@@ -121,6 +121,25 @@ unsafe fn mulSIMD256Rust_8(data: &[i32], datb: &[i32], dst: &mut [i32]) {
     _mm256_storeu_si256(dst.as_ptr() as *mut _, _mm256_mullo_epi32(veca, vecb))
 }
 
+
+#[cfg(target_feature = "avx512f")]
+extern "C" {
+    fn mulSIMD512_C(a: *const i32, b: *const i32, c: *mut i32, size: i32);
+}
+
+#[cfg(target_feature = "avx512f")]
+pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
+    unsafe {
+        mulSIMD512_C(
+            data.as_ptr(),
+            datb.as_ptr(),
+            res.as_mut_ptr(),
+            *ARRAY_LENGTH as i32,
+        );
+        return;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -209,10 +228,18 @@ mod tests {
         let datb = rand_vec();
         let mut res_reg = empty_vec();
         let mut res_simd = empty_vec();
+        #[cfg(target_feature = "avx512f")]
+        let mut res_simd512 = empty_vec();
+
         mulRegular(&data, &datb, &mut res_reg);
         mulSIMD256Rust(&data, &datb, &mut res_simd);
+        #[cfg(target_feature = "avx512f")]
+        mulSIMD512(&data, &datb, &mut res_simd512);
+
         for i in 0..*ARRAY_LENGTH {
             assert_eq!(res_reg[i], res_simd[i]);
+            #[cfg(target_feature = "avx512f")]
+            assert_eq!(res_reg[i], res_simd512[i]);
         }
     }
 
@@ -231,5 +258,14 @@ mod tests {
         let datb = rand_vec();
         let mut res_simd = empty_vec();
         b.iter(|| mulSIMD256Rust(&data, &datb, &mut res_simd));
+    }
+
+    #[bench]
+    #[cfg(target_feature = "avx512f")]
+    fn bench_mulSIMD256Rust(b: &mut Bencher) {
+        let data = rand_vec();
+        let datb = rand_vec();
+        let mut res_simd = empty_vec();
+        b.iter(|| mulSIMD512(&data, &datb, &mut res_simd));
     }
 }

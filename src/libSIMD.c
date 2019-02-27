@@ -7,13 +7,24 @@
 
 void addSIMD512_C(int * data, int * datb, int * dst, int n) {
     for (int i = 0 ; i < n ; i  = i+16) {
-        // Get the first 8 i32 in a SIMD type
+        // Get the first 16 i32 in a SIMD type
         __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
         __m512i vecb = _mm512_loadu_si512((__m512i *)(datb+i));
         // Store the addition result in dst
         _mm512_storeu_si512((__m512i *)(dst+i), _mm512_add_epi32(veca, vecb));
     }
 }
+
+void mulSIMD512_C(int * data, int * datb, int * dst, int n) {
+    for (int i = 0 ; i < n ; i  = i+16) {
+        __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
+        __m512i vecb = _mm512_loadu_si512((__m512i *)(datb+i));
+        // Store the addition result in dst
+        _mm512_storeu_si512((__m512i *)(dst+i), _mm512_mul_epi32(veca, vecb));
+    }
+}
+
+
 #endif
 
 
@@ -29,4 +40,4 @@ void addSIMD256_C(int * data, int * datb, int * dst, int n) {
         _mm256_storeu_si256((__m256i *)(dst+i), _mm256_add_epi32(veca, vecb));
     }
 }
-#endif // No SIMD
+#endif
