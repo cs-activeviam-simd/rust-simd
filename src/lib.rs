@@ -149,7 +149,7 @@ pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
 
 //  ------- FilterSum --------
 
-pub fn filterSumRegular(x : i32, data: &[i32], datb: &[i32]) -> i32 {
+pub fn filterSumRegular(x: i32, data: &[i32], datb: &[i32]) -> i32 {
     let mut sum = 0;
     for i in 0..*ARRAY_LENGTH {
         if data[i] == x {
@@ -171,27 +171,13 @@ extern "C" {
 }
 
 #[cfg(target_feature = "avx2")]
-pub fn filterSumSIMD256(x : i32, data: &[i32], datb: &[i32]) -> i32 {
-    unsafe {
-        filterSumSIMD256_C(
-            x,
-            data.as_ptr(),
-            datb.as_ptr(),
-            *ARRAY_LENGTH as i32,
-        )
-    }
+pub fn filterSumSIMD256(x: i32, data: &[i32], datb: &[i32]) -> i32 {
+    unsafe { filterSumSIMD256_C(x, data.as_ptr(), datb.as_ptr(), *ARRAY_LENGTH as i32) }
 }
 
 #[cfg(target_feature = "avx512f")]
-pub fn filterSumSIMD512(x : i32, data: &[i32], datb: &[i32]) -> i32 {
-    unsafe {
-        filterSumSIMD512_C(
-            x,
-            data.as_ptr(),
-            datb.as_ptr(),
-            *ARRAY_LENGTH as i32,
-        )
-    }
+pub fn filterSumSIMD512(x: i32, data: &[i32], datb: &[i32]) -> i32 {
+    unsafe { filterSumSIMD512_C(x, data.as_ptr(), datb.as_ptr(), *ARRAY_LENGTH as i32) }
 }
 
 #[cfg(test)]
@@ -330,7 +316,6 @@ mod tests {
         let mut res_simd = empty_vec();
         b.iter(|| mulSIMD512(&data, &datb, &mut res_simd));
     }
-
 
     #[test]
     #[cfg(target_feature = "avx2")]
