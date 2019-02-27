@@ -27,7 +27,6 @@ void mulSIMD512_C(int * data, int * datb, int * dst, int n) {
 int filterSumSIMD512_C(int x, int * data, int * datb, int n) {
     __m512i vecSum = _mm512_set1_epi32(0);
     __m512i vecX = _mm512_set1_epi32(x);
-    __m512i vec0 = _mm512_set1_epi32(0);
     for (int i = 0 ; i < n ; i  = i+16) {
         __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
         __m512i vecb = _mm512_loadu_si512((__m512i *)(datb+i));
@@ -58,7 +57,6 @@ void addSIMD256_C(int * data, int * datb, int * dst, int n) {
 int filterSumSIMD256_C(int x, int * data, int * datb, int n) {
     __m256i vecSum = _mm256_set1_epi32(0);
     __m256i vecX = _mm256_set1_epi32(x);
-    __m256i vec0 = _mm256_set1_epi32(0);
     for (int i = 0 ; i < n ; i  = i+8) {
         __m256i veca = _mm256_loadu_si256((__m256i *)(data+i));
         // Mask the positions of elements equal to x
