@@ -20,7 +20,7 @@ void mulSIMD512_C(int * data, int * datb, int * dst, int n) {
         __m512i veca = _mm512_loadu_si512((__m512i *)(data+i));
         __m512i vecb = _mm512_loadu_si512((__m512i *)(datb+i));
         // Store the addition result in dst
-        _mm512_storeu_si512((__m512i *)(dst+i), _mm512_mul_epi32(veca, vecb));
+        _mm512_storeu_si512((__m512i *)(dst+i), _mm512_mullo_epi32(veca, vecb));
     }
 }
 
