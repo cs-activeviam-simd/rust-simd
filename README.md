@@ -19,10 +19,9 @@ ARRAY_LENGTH defaults to 256. Add `-- --nocapture` to get the test/bench outputs
 ### Rust code
 
 Create a regular function to compare to.
-Add a bench for it:
+Add a bench for it in `benches/bench.rs` and add it to the correct `criterion_group!`:
 ```rust
-    #[bench]
-    fn bench_mulRegular(b: &mut Bencher) {}
+fn bench_addRegular(c: &mut Criterion) {}
 ```
 
 Create a test fonction to compare the SIMD results to the regular ones.
@@ -62,5 +61,5 @@ ARRAY_LENGTH=<> cargo bench <benchname>
 
 Use the runner to run on multiple sizes (multiplied by 2 at each iteration)
 ```
-./run_bench.py <minsize> <maxsize> [extra cargo args]
+./run_criterion.py <minsize> <maxsize> [extra cargo args]
 ```

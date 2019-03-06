@@ -1,24 +1,30 @@
-#![feature(test)]
 #![allow(non_snake_case)]
+extern crate rand;
+
 #[macro_use]
 extern crate lazy_static;
+
 lazy_static! {
-    static ref ARRAY_LENGTH: usize = std::env::vars()
-        .find_map(|(key, val)| if key == "ARRAY_LENGTH" {
+    pub static ref ARRAY_LENGTH_MIN: usize = std::env::vars()
+        .find_map(|(key, val)| if key == "ARRAY_LENGTH_MIN" {
             val.parse::<usize>().ok()
         } else {
             None
         })
-        .unwrap_or(256);
+        .unwrap_or(512);
+    pub static ref ARRAY_LENGTH_MAX: usize = std::env::vars()
+        .find_map(|(key, val)| if key == "ARRAY_LENGTH_MAX" {
+            val.parse::<usize>().ok()
+        } else {
+            None
+        })
+        .unwrap_or(1024);
 }
-
-extern crate rand;
-extern crate test;
 
 //  ------- Addition --------
 
 pub fn addRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    for i in 0..*ARRAY_LENGTH {
+    for i in 0..data.len() {
         res[i] = data[i] + datb[i]
     }
 }
@@ -27,7 +33,7 @@ pub fn addRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
 pub fn addSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
     // Nothing happens when no SIMD
     unsafe {
-        for i in 0..*ARRAY_LENGTH / 8 {
+        for i in 0..data.len() / 8 {
             addSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
         }
     }
@@ -69,7 +75,7 @@ pub fn addSIMD256(data: &[i32], datb: &[i32], res: &mut [i32]) {
             data.as_ptr(),
             datb.as_ptr(),
             res.as_mut_ptr(),
-            *ARRAY_LENGTH as i32,
+            data.len() as i32,
         )
     }
 }
@@ -82,7 +88,7 @@ pub fn addSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
             data.as_ptr(),
             datb.as_ptr(),
             res.as_mut_ptr(),
-            *ARRAY_LENGTH as i32,
+            data.len() as i32,
         )
     }
 }
@@ -92,7 +98,7 @@ pub fn addSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
 //  ------- Multiplication --------
 
 pub fn mulRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
-    for i in 0..*ARRAY_LENGTH {
+    for i in 0..data.len() {
         res[i] = data[i].wrapping_mul(datb[i]); // Does not overflow
     }
 }
@@ -101,7 +107,7 @@ pub fn mulRegular(data: &[i32], datb: &[i32], res: &mut [i32]) {
 pub fn mulSIMD256Rust(data: &[i32], datb: &[i32], res: &mut [i32]) {
     // Nothing happens when no SIMD
     unsafe {
-        for i in 0..*ARRAY_LENGTH / 8 {
+        for i in 0..data.len() / 8 {
             mulSIMD256Rust_8(&data[i * 8..], &datb[i * 8..], &mut res[i * 8..]);
         }
     }
@@ -138,7 +144,7 @@ pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
             data.as_ptr(),
             datb.as_ptr(),
             res.as_mut_ptr(),
-            *ARRAY_LENGTH as i32,
+            data.len() as i32,
         );
         return;
     }
@@ -151,7 +157,7 @@ pub fn mulSIMD512(data: &[i32], datb: &[i32], res: &mut [i32]) {
 
 pub fn filterSumRegular(x: i32, data: &[i32], datb: &[i32]) -> i32 {
     let mut sum = 0;
-    for i in 0..*ARRAY_LENGTH {
+    for i in 0..data.len() {
         if data[i] == x {
             sum += datb[i];
         }
@@ -172,42 +178,41 @@ extern "C" {
 
 #[cfg(target_feature = "avx2")]
 pub fn filterSumSIMD256(x: i32, data: &[i32], datb: &[i32]) -> i32 {
-    unsafe { filterSumSIMD256_C(x, data.as_ptr(), datb.as_ptr(), *ARRAY_LENGTH as i32) }
+    unsafe { filterSumSIMD256_C(x, data.as_ptr(), datb.as_ptr(), data.len() as i32) }
 }
 
 #[cfg(target_feature = "avx512f")]
 pub fn filterSumSIMD512(x: i32, data: &[i32], datb: &[i32]) -> i32 {
-    unsafe { filterSumSIMD512_C(x, data.as_ptr(), datb.as_ptr(), *ARRAY_LENGTH as i32) }
+    unsafe { filterSumSIMD512_C(x, data.as_ptr(), datb.as_ptr(), data.len() as i32) }
+}
+
+pub fn rand_vec() -> Vec<i32> {
+    let mut res = Vec::with_capacity(*ARRAY_LENGTH_MAX);
+    for _ in 0..*ARRAY_LENGTH_MAX {
+        res.push(rand::random::<i32>() / 2);
+    }
+    res
+}
+
+pub fn rand_small_vec() -> Vec<i32> {
+    let mut res = Vec::with_capacity(*ARRAY_LENGTH_MAX);
+    for _ in 0..*ARRAY_LENGTH_MAX {
+        res.push(rand::random::<i32>() % 32);
+    }
+    res
+}
+
+pub fn empty_vec() -> Vec<i32> {
+    let mut res = Vec::with_capacity(*ARRAY_LENGTH_MAX);
+    unsafe {
+        res.set_len(*ARRAY_LENGTH_MAX);
+    }
+    res
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test::Bencher;
-
-    fn rand_vec() -> Vec<i32> {
-        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
-        for _ in 0..*ARRAY_LENGTH {
-            res.push(rand::random::<i32>() / 2);
-        }
-        res
-    }
-
-    fn rand_small_vec() -> Vec<i32> {
-        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
-        for _ in 0..*ARRAY_LENGTH {
-            res.push(rand::random::<i32>() % 32);
-        }
-        res
-    }
-
-    fn empty_vec() -> Vec<i32> {
-        let mut res = Vec::with_capacity(*ARRAY_LENGTH);
-        unsafe {
-            res.set_len(*ARRAY_LENGTH);
-        }
-        res
-    }
 
     #[test]
     #[cfg(target_feature = "avx2")]
@@ -226,47 +231,12 @@ mod tests {
         #[cfg(target_feature = "avx512f")]
         addSIMD512(&data, &datb, &mut res_simd512);
 
-        for i in 0..*ARRAY_LENGTH {
+        for i in 0..data.len() {
             assert_eq!(res_reg[i], res_simd[i]);
             assert_eq!(res_simd256[i], res_reg[i]);
             #[cfg(target_feature = "avx512f")]
             assert_eq!(res_simd512[i], res_reg[i]);
         }
-    }
-
-    #[bench]
-    fn bench_addRegular(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_reg = empty_vec();
-        b.iter(|| addRegular(&data, &datb, &mut res_reg));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx2")]
-    fn bench_addSIMD256Rust(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_simd = empty_vec();
-        b.iter(|| addSIMD256Rust(&data, &datb, &mut res_simd));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx2")]
-    fn bench_addSIMD256(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_simd = empty_vec();
-        b.iter(|| addSIMD256(&data, &datb, &mut res_simd));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx512f")]
-    fn bench_addSIMD512(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_simd = empty_vec();
-        b.iter(|| addSIMD512(&data, &datb, &mut res_simd));
     }
 
     #[test]
@@ -284,37 +254,11 @@ mod tests {
         #[cfg(target_feature = "avx512f")]
         mulSIMD512(&data, &datb, &mut res_simd512);
 
-        for i in 0..*ARRAY_LENGTH {
+        for i in 0..data.len() {
             assert_eq!(res_reg[i], res_simd[i]);
             #[cfg(target_feature = "avx512f")]
             assert_eq!(res_reg[i], res_simd512[i]);
         }
-    }
-
-    #[bench]
-    fn bench_mulRegular(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_reg = empty_vec();
-        b.iter(|| mulRegular(&data, &datb, &mut res_reg));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx2")]
-    fn bench_mulSIMD256Rust(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_simd = empty_vec();
-        b.iter(|| mulSIMD256Rust(&data, &datb, &mut res_simd));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx512f")]
-    fn bench_mulSIMD512(b: &mut Bencher) {
-        let data = rand_vec();
-        let datb = rand_vec();
-        let mut res_simd = empty_vec();
-        b.iter(|| mulSIMD512(&data, &datb, &mut res_simd));
     }
 
     #[test]
@@ -334,30 +278,5 @@ mod tests {
         assert_eq!(res_reg, res_simd512);
     }
 
-    #[bench]
-    fn bench_filterSumRegular(b: &mut Bencher) {
-        let x = rand::random::<i32>() % 32;
-        let data = rand_small_vec();
-        let datb = rand_small_vec();
-        b.iter(|| filterSumRegular(x, &data, &datb));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx2")]
-    fn bench_filterSumSIMD256(b: &mut Bencher) {
-        let x = rand::random::<i32>() % 32;
-        let data = rand_small_vec();
-        let datb = rand_small_vec();
-        b.iter(|| filterSumSIMD256(x, &data, &datb));
-    }
-
-    #[bench]
-    #[cfg(target_feature = "avx512f")]
-    fn bench_filterSumSIMD512(b: &mut Bencher) {
-        let x = rand::random::<i32>() % 32;
-        let data = rand_small_vec();
-        let datb = rand_small_vec();
-        b.iter(|| filterSumSIMD512(x, &data, &datb));
-    }
-
 }
+
