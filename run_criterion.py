@@ -40,20 +40,18 @@ def parse_line(line):
         }
     }
 
-def parse_output(s):
-    res = []
-    for line in s.splitlines():
-        if 'time:' in line:
-            res.append(parse_line(line))
-    return res
-
-
 def run(minsize, maxsize, extraArgs):
-    size = minsize
-    p = subprocess.run(['cargo', 'bench', '--', '--color=never'] + extraArgs, stdout=subprocess.PIPE, env=dict(os.environ,ARRAY_LENGTH_MIN=str(minsize) , ARRAY_LENGTH_MAX=str(maxsize)))
-    # print(p.stder.decode())
-    out = p.stdout.decode()
-    results = parse_output(out)
+    p = subprocess.Popen(['cargo', 'bench', '--', '--color=never'] + extraArgs, stdout=subprocess.PIPE, env=dict(os.environ,ARRAY_LENGTH_MIN=str(minsize) , ARRAY_LENGTH_MAX=str(maxsize)))
+    results = []
+    while True:
+        line = p.stdout.readline().decode()
+        if line == '' and p.poll() is not None:
+            break
+        if line:
+            if 'Warming up' in line or 'Collecting' in line:
+                print(line, file=sys.stderr)
+            elif 'time:' in line:
+                results.append(parse_line(line))
 
     print(json.dumps(results, indent=4, sort_keys=True))
 

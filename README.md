@@ -4,8 +4,7 @@ The SIMD operation currently only works on avx2-compatible processors.
 
 ## Usage
 
-You need to use Nightly Rust:
-`rustup override set nightly`
+Stable Rust is recommended.
 
 Run the tests:
 `cargo test`
