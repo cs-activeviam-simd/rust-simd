@@ -4,8 +4,11 @@ The SIMD operation currently only works on avx2-compatible processors.
 
 ## Usage
 
-Stable Rust is recommended.
-
+Nightly Rust is required (for `target_feature = 'avx512f'`).
+```bash
+rustup toolchain install nightly
+rustup override set nightly
+```
 Run the tests:
 `cargo test`
 

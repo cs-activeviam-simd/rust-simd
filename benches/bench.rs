@@ -113,10 +113,9 @@ criterion_group!(regular, bench_addRegular, bench_mulRegular, bench_filterSumReg
 criterion_group!(avx2, bench_addSIMD256, bench_addSIMD256Rust, bench_mulSIMD256Rust, bench_filterSumSIMD256);
 
 #[cfg(target_feature = "avx512f")]
-criterion_group!(avx512, bench_addSIMD512 bench_mulSIMD512, bench_filterSumSIMD512);
+criterion_group!(avx512, bench_addSIMD512, bench_mulSIMD512, bench_filterSumSIMD512);
 
-
-#[cfg(all(target_feature = "avx2", target_feature = "avx512f"))]
+#[cfg(target_feature = "avx512f")]
 criterion_main!(regular, avx2, avx512);
 
 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512f")))]
