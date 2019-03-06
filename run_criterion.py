@@ -50,7 +50,7 @@ def parse_output(s):
 
 def run(minsize, maxsize, extraArgs):
     size = minsize
-    p = subprocess.run(['cargo', 'bench', '--', '--color=never'] + extraArgs, capture_output=True, env=dict(os.environ,ARRAY_LENGTH_MIN=str(minsize) , ARRAY_LENGTH_MAX=str(maxsize)))
+    p = subprocess.run(['cargo', 'bench', '--', '--color=never'] + extraArgs, stdout=subprocess.PIPE, env=dict(os.environ,ARRAY_LENGTH_MIN=str(minsize) , ARRAY_LENGTH_MAX=str(maxsize)))
     # print(p.stder.decode())
     out = p.stdout.decode()
     results = parse_output(out)
